@@ -1,0 +1,193 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --bg-parchment: #F3EDE2;
+    --bg-panel: rgba(243, 237, 226, 0.86);
+    --ink-dark: #231D18;
+    --ink-medium: #5A4E43;
+    --ink-light: #8C7D70;
+    --line-border: rgba(58, 46, 37, 0.25);
+    --line-fine: rgba(58, 46, 37, 0.12);
+    --cinnabar: #9E3328;
+    --gold-accent: #B8860B;
+}
+
+* {
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-parchment);
+    color: var(--ink-dark);
+    font-family: 'Noto Serif SC', serif;
+}
+
+.font-en-serif {
+    font-family: 'Cormorant Garamond', serif;
+}
+
+.font-mono-tech {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* 宣纸与工程测绘背景肌理 */
+.drafting-paper {
+    background-color: var(--bg-parchment);
+    background-image:
+        radial-gradient(circle at 50% 45%, rgba(255, 252, 245, 0.5) 0%, rgba(218, 206, 186, 0.45) 100%),
+        linear-gradient(to right, rgba(70, 56, 44, 0.055) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(70, 56, 44, 0.055) 1px, transparent 1px),
+        linear-gradient(to right, rgba(70, 56, 44, 0.11) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(70, 56, 44, 0.11) 1px, transparent 1px);
+    background-size: 100% 100%, 20px 20px, 20px 20px, 100px 100px, 100px 100px;
+}
+
+/* 细线工程边框 */
+.arch-frame {
+    border: 1px solid var(--line-border);
+    position: relative;
+}
+.arch-frame::before {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px; right: 3px; bottom: 3px;
+    border: 1px solid var(--line-fine);
+    pointer-events: none;
+}
+
+/* 角落十字准星装饰 */
+.corner-cross {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    pointer-events: none;
+}
+.corner-cross::before, .corner-cross::after {
+    content: '';
+    position: absolute;
+    background-color: var(--ink-medium);
+}
+.corner-cross::before { top: 4px; left: 0; width: 9px; height: 1px; }
+.corner-cross::after { top: 0; left: 4px; width: 1px; height: 9px; }
+
+/* 古典图章样式 */
+.seal-stamp {
+    border: 1.5px solid var(--cinnabar);
+    color: var(--cinnabar);
+    padding: 2px 6px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    line-height: 1.15;
+    display: inline-block;
+    box-shadow: inset 0 0 0 1px rgba(158, 51, 40, 0.2);
+    transform: rotate(-1.5deg);
+}
+
+/* 按钮古籍测绘样式 */
+.arch-btn {
+    background: rgba(247, 242, 233, 0.75);
+    border: 1px solid rgba(58, 46, 37, 0.35);
+    color: var(--ink-dark);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+.arch-btn:hover {
+    background: rgba(58, 46, 37, 0.08);
+    border-color: var(--ink-dark);
+}
+.arch-btn.active {
+    background: var(--ink-dark);
+    color: #F6F1E7;
+    border-color: var(--ink-dark);
+}
+.arch-btn.active .btn-sub {
+    color: #C7B9A8;
+}
+.arch-btn.accent-active {
+    background: var(--cinnabar);
+    color: #F6F1E7;
+    border-color: var(--cinnabar);
+}
+
+/* 标注点样式 */
+.annotation-pin {
+    position: absolute;
+    pointer-events: auto;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.25s ease;
+    z-index: 25;
+    cursor: pointer;
+}
+.pin-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--cinnabar);
+    border: 1.5px solid #F3EDE2;
+    box-shadow: 0 0 0 1px var(--cinnabar), 0 2px 6px rgba(0,0,0,0.25);
+    position: relative;
+    transition: transform 0.2s ease;
+}
+.annotation-pin:hover .pin-dot, .annotation-pin.selected .pin-dot {
+    transform: scale(1.35);
+    background: #231D18;
+    box-shadow: 0 0 0 1.5px #231D18;
+}
+.pin-pulse {
+    position: absolute;
+    top: -5px; left: -5px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 1px solid var(--cinnabar);
+    animation: pulseRing 2.6s infinite ease-out;
+    pointer-events: none;
+}
+@keyframes pulseRing {
+    0% { transform: scale(0.6); opacity: 0.9; }
+    100% { transform: scale(2.1); opacity: 0; }
+}
+
+.pin-card {
+    position: absolute;
+    background: rgba(246, 241, 231, 0.94);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(45, 36, 30, 0.45);
+    padding: 5px 10px;
+    white-space: nowrap;
+    box-shadow: 0 4px 15px rgba(35, 29, 24, 0.08);
+    transition: all 0.25s ease;
+}
+.annotation-pin:hover .pin-card, .annotation-pin.selected .pin-card {
+    border-color: var(--cinnabar);
+    background: #FAF6EE;
+    transform: translateY(-2px);
+}
+
+/* 隐藏滚动条但保留滚动功能 */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* 标尺刻度装饰 */
+.ruler-x {
+    background-image: repeating-linear-gradient(to right, rgba(58, 46, 37, 0.35) 0, rgba(58, 46, 37, 0.35) 1px, transparent 1px, transparent 10px);
+    height: 6px;
+}
+.ruler-y {
+    background-image: repeating-linear-gradient(to bottom, rgba(58, 46, 37, 0.35) 0, rgba(58, 46, 37, 0.35) 1px, transparent 1px, transparent 10px);
+    width: 6px;
+}

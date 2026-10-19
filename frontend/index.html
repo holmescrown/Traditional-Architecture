@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>应县木塔 · 佛宫寺释迦塔 | 3D 交互式古建营造图鉴</title>
+    <!-- 引入 Google Fonts 古典衬线与学术等宽字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="drafting-paper relative select-none">
+
+    <!-- 场景数据加载遮罩 -->
+    <div id="app-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-[#F3EDE2] transition-opacity duration-500">
+        <div class="text-center">
+            <p class="font-mono-tech text-[11px] tracking-[0.3em] text-[#5A4E43]">LOADING ARCHIVE YX-1056</p>
+            <p id="app-loader-text" class="text-xs text-[#8C7D70] mt-2">正在载入营造数据…</p>
+        </div>
+    </div>
+
+    <!-- 3D 渲染主画布 -->
+    <div id="canvas-container" class="fixed inset-0 w-full h-full z-10 cursor-grab active:cursor-grabbing"></div>
+
+    <!-- 2D 动态引线 SVG 覆盖层 -->
+    <svg id="leader-svg" class="fixed inset-0 w-full h-full pointer-events-none z-20"></svg>
+
+    <!-- 3D 悬浮引线标注 DOM 容器 -->
+    <div id="annotations-container" class="fixed inset-0 w-full h-full pointer-events-none z-20 overflow-hidden"></div>
+
+    <!-- 外框测绘标尺与图框线 (营造法式图纸边框) -->
+    <div class="fixed inset-2 sm:inset-3.5 border border-[#3A2E25]/35 pointer-events-none z-30 flex flex-col justify-between">
+        <!-- 顶部标尺与图号栏 -->
+        <div class="w-full border-b border-[#3A2E25]/20 bg-[#F3EDE2]/70 backdrop-blur-[2px] px-3 py-1 flex items-center justify-between text-[11px] font-mono-tech text-[#5A4E43]">
+            <div class="flex items-center space-x-4">
+                <span class="font-bold text-[#231D18]">营造学社测绘档案 · 卷叁</span>
+                <span class="hidden sm:inline">ARCHIVE NO. YX-1056-SHANXI</span>
+                <span class="hidden md:inline">DRAWING SCALE 1:100 (营造尺 1尺 ≈ 29.4cm)</span>
+            </div>
+            <div class="flex-1 mx-6 ruler-x hidden lg:block"></div>
+            <div class="flex items-center space-x-4">
+                <span>N 39°33′55″ E 113°10′55″</span>
+                <span class="text-[#9E3328] font-semibold">辽清宁二年 (1056 AD)</span>
+            </div>
+        </div>
+
+        <!-- 四角准星 -->
+        <div class="corner-cross" style="top: 28px; left: 6px;"></div>
+        <div class="corner-cross" style="top: 28px; right: 6px;"></div>
+        <div class="corner-cross" style="bottom: 42px; left: 6px;"></div>
+        <div class="corner-cross" style="bottom: 42px; right: 6px;"></div>
+
+        <!-- 中央圆规比例环装饰（背景极淡参考圆） -->
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[540px] h-[540px] rounded-full border border-dashed border-[#3A2E25]/15 pointer-events-none hidden md:flex items-center justify-center">
+            <div class="w-[620px] h-[620px] rounded-full border border-[#3A2E25]/10"></div>
+        </div>
+    </div>
+
+    <!-- ==================== 左侧控制与信息面板 ==================== -->
+    <aside class="fixed top-12 left-4 sm:left-7 bottom-14 w-[310px] sm:w-[345px] z-30 flex flex-col justify-between pointer-events-none">
+        <div class="arch-frame bg-[#F3EDE2]/90 backdrop-blur-md p-4 sm:p-5 pointer-events-auto overflow-y-auto no-scrollbar max-h-full flex flex-col gap-4 shadow-sm">
+
+            <!-- 标题与印章区 -->
+            <div class="border-b border-[#3A2E25]/25 pb-3.5 relative">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <p class="font-en-serif text-xs sm:text-sm tracking-[0.2em] text-[#5A4E43] font-semibold uppercase">
+                            YINGXIAN WOODEN PAGODA
+                        </p>
+                        <h1 class="text-xl sm:text-2xl font-bold tracking-wider text-[#231D18] mt-0.5">
+                            应县木塔·佛宫寺释迦塔
+                        </h1>
+                    </div>
+                    <div class="seal-stamp text-[10px] shrink-0">
+                        古建<br>瑰宝
+                    </div>
+                </div>
+                <p class="text-xs text-[#5A4E43] leading-relaxed mt-2.5 text-justify">
+                    建于辽清宁二年（公元1056年），通高67.31米，底层直径30.27米。全塔无一颗铁钉，纯凭数万构件榫卯咬合，采用“明五暗四”八角楼阁式双槽结构，集54种斗拱形制，被誉为“斗拱博物馆”，屹立千年历经强震而不倾。
+                </p>
+            </div>
+
+            <!-- 交互状态提示栏 -->
+            <div class="bg-[#E9E0D1]/75 border border-[#3A2E25]/20 px-3 py-2 flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-2 h-2 rounded-full bg-[#9E3328] animate-ping"></span>
+                    <span class="font-medium text-[#231D18]" id="active-status-label">交互模式：全视角3D环绕观察</span>
+                </div>
+                <span class="font-mono-tech text-[10px] text-[#5A4E43]" id="camera-angle-readout">AZ: 32° EL: 18°</span>
+            </div>
+
+            <!-- 功能控制区：营造解构与渲染模式 -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold tracking-widest text-[#231D18] flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-[#9E3328] inline-block"></span>
+                        营造解构控制 · STRUCTURAL OPS
+                    </span>
+                    <span class="font-mono-tech text-[10px] text-[#8C7D70]">MODE.01</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-wireframe" class="arch-btn px-3 py-2 text-left rounded-[2px] flex flex-col justify-between">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-xs font-semibold">线框透视</span>
+                            <span class="font-mono-tech text-[10px] opacity-70">[W]</span>
+                        </div>
+                        <span class="btn-sub font-en-serif text-[11px] text-[#5A4E43] italic">Wireframe Skeleton</span>
+                    </button>
+
+                    <button id="btn-explode" class="arch-btn px-3 py-2 text-left rounded-[2px] flex flex-col justify-between">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-xs font-semibold">爆炸分解</span>
+                            <span class="font-mono-tech text-[10px] opacity-70">[E]</span>
+                        </div>
+                        <span class="btn-sub font-en-serif text-[11px] text-[#5A4E43] italic">Exploded Tiers</span>
+                    </button>
+
+                    <button id="btn-autorotate" class="arch-btn active px-3 py-2 text-left rounded-[2px] flex flex-col justify-between">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-xs font-semibold">自动慢速自转</span>
+                            <span class="font-mono-tech text-[10px] opacity-70">[R]</span>
+                        </div>
+                        <span class="btn-sub font-en-serif text-[11px] text-[#5A4E43] italic">Auto Rotate 360°</span>
+                    </button>
+
+                    <button id="btn-reset" class="arch-btn px-3 py-2 text-left rounded-[2px] flex flex-col justify-between">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="text-xs font-semibold">重置视角</span>
+                            <span class="font-mono-tech text-[10px] opacity-70">[SPC]</span>
+                        </div>
+                        <span class="btn-sub font-en-serif text-[11px] text-[#5A4E43] italic">Reset Camera</span>
+                    </button>
+                </div>
+
+                <!-- 辅助开关：引线标注与剖面展示 -->
+                <div class="mt-2 flex items-center justify-between border-t border-[#3A2E25]/15 pt-2">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs text-[#3A2E25]">
+                        <input type="checkbox" id="toggle-pins" checked class="accent-[#9E3328] w-3.5 h-3.5 cursor-pointer">
+                        <span>显示悬浮引线标注 (Annotation Pins)</span>
+                    </label>
+                    <span class="font-mono-tech text-[10px] text-[#9E3328]">6 NODES</span>
+                </div>
+            </div>
+
+            <!-- 视点快切：测绘视图 -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold tracking-widest text-[#231D18] flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-[#231D18] inline-block"></span>
+                        测绘视点快切 · VIEW PROJECTIONS
+                    </span>
+                    <span class="font-mono-tech text-[10px] text-[#8C7D70]">CAM.02</span>
+                </div>
+                <div class="grid grid-cols-4 gap-1.5">
+                    <button data-view="aerial" class="view-btn arch-btn active py-1.5 px-1 text-center rounded-[2px]">
+                        <div class="text-xs font-semibold">3D鸟瞰</div>
+                        <div class="btn-sub font-mono-tech text-[9px] text-[#5A4E43]">AERIAL</div>
+                    </button>
+                    <button data-view="front" class="view-btn arch-btn py-1.5 px-1 text-center rounded-[2px]">
+                        <div class="text-xs font-semibold">正立面</div>
+                        <div class="btn-sub font-mono-tech text-[9px] text-[#5A4E43]">FRONT</div>
+                    </button>
+                    <button data-view="side" class="view-btn arch-btn py-1.5 px-1 text-center rounded-[2px]">
+                        <div class="text-xs font-semibold">侧立面</div>
+                        <div class="btn-sub font-mono-tech text-[9px] text-[#5A4E43]">SIDE</div>
+                    </button>
+                    <button data-view="lookup" class="view-btn arch-btn py-1.5 px-1 text-center rounded-[2px]">
+                        <div class="text-xs font-semibold">飞檐仰视</div>
+                        <div class="btn-sub font-mono-tech text-[9px] text-[#5A4E43]">LOOK-UP</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 木构色泽/历史风貌切换 -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold tracking-widest text-[#231D18] flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-[#8B5A2B] inline-block"></span>
+                        木构风貌色泽 · DYNASTY FINISH
+                    </span>
+                    <span class="font-mono-tech text-[10px] text-[#8C7D70]">MAT.03</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button data-style="liao" class="style-btn arch-btn active p-2 rounded-[2px] flex flex-col items-start gap-1">
+                        <div class="flex items-center gap-1.5 w-full">
+                            <span class="w-3.5 h-3.5 rounded-full border border-black/30" style="background: #6E3B26;"></span>
+                            <span class="text-xs font-semibold">辽代原木</span>
+                        </div>
+                        <span class="btn-sub text-[10px] text-[#5A4E43]">红松赤褐·土朱漆</span>
+                    </button>
+
+                    <button data-style="ming" class="style-btn arch-btn p-2 rounded-[2px] flex flex-col items-start gap-1">
+                        <div class="flex items-center gap-1.5 w-full">
+                            <span class="w-3.5 h-3.5 rounded-full border border-black/30" style="background: #3B281E;"></span>
+                            <span class="text-xs font-semibold">明清重修</span>
+                        </div>
+                        <span class="btn-sub text-[10px] text-[#5A4E43]">沉穆墨栗·熟桐油</span>
+                    </button>
+
+                    <button data-style="weathered" class="style-btn arch-btn p-2 rounded-[2px] flex flex-col items-start gap-1">
+                        <div class="flex items-center gap-1.5 w-full">
+                            <span class="w-3.5 h-3.5 rounded-full border border-black/30" style="background: #786B5E;"></span>
+                            <span class="text-xs font-semibold">岁月风化</span>
+                        </div>
+                        <span class="btn-sub text-[10px] text-[#5A4E43]">千年苍灰·木理斑驳</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 当前选中构件详情解说盒 -->
+            <div id="selected-node-box" class="bg-[#E8DEC8]/65 border-l-2 border-[#9E3328] p-2.5 text-xs">
+                <div class="flex items-center justify-between">
+                    <span id="node-title" class="font-bold text-[#9E3328]">【明五暗四 · 双槽筒体结构】</span>
+                    <span id="node-code" class="font-mono-tech text-[10px] text-[#5A4E43]">ELEV +28.4m</span>
+                </div>
+                <p id="node-desc" class="text-[11px] text-[#3A2E25] mt-1 leading-relaxed">
+                    点击右侧模型上的朱砂圆点标注，可聚焦查看塔刹、柱头斗拱、暗层斜撑及副阶周匝等核心古建营造做法。支持鼠标拖拽旋转与滚轮缩放。
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==================== 右侧技术附录面板 (Architectural Plates) ==================== -->
+    <aside class="fixed top-12 right-4 sm:right-7 bottom-14 w-[320px] sm:w-[360px] z-30 hidden lg:flex flex-col gap-3 pointer-events-none">
+
+        <!-- 右上侧：2D 矢量白描正立面与剖面测绘线稿 -->
+        <div class="arch-frame bg-[#F3EDE2]/90 backdrop-blur-md p-4 pointer-events-auto flex-1 flex flex-col justify-between min-h-0">
+            <div class="flex items-center justify-between border-b border-[#3A2E25]/25 pb-2">
+                <div>
+                    <h2 class="text-xs font-bold tracking-widest text-[#231D18]">立面与剖面测绘线稿 · ELEVATION & SECTION</h2>
+                    <p class="font-en-serif text-[11px] text-[#5A4E43] italic">Left: Section (暗层斜撑) / Right: Elevation (外檐立面)</p>
+                </div>
+                <span class="font-mono-tech text-[10px] px-1.5 py-0.5 border border-[#3A2E25]/30 text-[#3A2E25]">FIG. 1A</span>
+            </div>
+
+            <!-- 精细 SVG 白描剖立面合一图（左剖右立，梁思成测绘手稿风格） -->
+            <div class="relative flex-1 flex items-center justify-center my-1 overflow-hidden">
+                <svg viewBox="0 0 320 380" class="w-full h-full max-h-[310px]" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- 背景中轴线与标高辅助虚线 -->
+                    <line x1="160" y1="8" x2="160" y2="355" stroke="#9E3328" stroke-width="0.8" stroke-dasharray="4 2"/>
+                    <text x="163" y="16" fill="#9E3328" font-size="7" font-family="JetBrains Mono">CENTER AXIS 中轴线</text>
+
+                    <!-- 标高水平尺线 -->
+                    <g stroke="#3A2E25" stroke-width="0.4" stroke-dasharray="2 2" opacity="0.55">
+                        <line x1="25" y1="22" x2="295" y2="22"/>
+                        <line x1="25" y1="88" x2="295" y2="88"/>
+                        <line x1="25" y1="132" x2="295" y2="132"/>
+                        <line x1="25" y1="176" x2="295" y2="176"/>
+                        <line x1="25" y1="222" x2="295" y2="222"/>
+                        <line x1="25" y1="270" x2="295" y2="270"/>
+                        <line x1="20" y1="335" x2="300" y2="335"/>
+                    </g>
+
+                    <!-- 左侧总高尺寸标注线 -->
+                    <g stroke="#231D18" stroke-width="0.7">
+                        <line x1="22" y1="22" x2="22" y2="335"/>
+                        <line x1="18" y1="22" x2="26" y2="22"/>
+                        <line x1="18" y1="88" x2="26" y2="88"/>
+                        <line x1="18" y1="335" x2="26" y2="335"/>
+                    </g>
+                    <text x="14" y="195" fill="#231D18" font-size="7.5" font-family="JetBrains Mono" transform="rotate(-90 14 195)">TOTAL HEIGHT 通高 67.31m</text>
+                    <text x="27" y="58" fill="#5A4E43" font-size="6.5" font-family="JetBrains Mono">铁刹 14.21m</text>
+
+                    <!-- 台基 Stepped Stone Base -->
+                    <rect x="48" y="335" width="224" height="8" stroke="#231D18" stroke-width="1" fill="#E6DEC8"/>
+                    <rect x="38" y="343" width="244" height="10" stroke="#231D18" stroke-width="1.2" fill="#DDD3BC"/>
+                    <!-- 台基剖面斜线纹理 -->
+                    <path d="M45 343 L52 353 M65 343 L72 353 M85 343 L92 353 M105 343 L112 353 M125 343 L132 353 M145 343 L152 353" stroke="#5A4E43" stroke-width="0.6"/>
+
+                    <!-- 底层 一层（含副阶周匝） -->
+                    <!-- 左半：内部双槽柱网与佛像剖面 -->
+                    <rect x="86" y="270" width="74" height="65" stroke="#231D18" stroke-width="0.9"/>
+                    <line x1="112" y1="270" x2="112" y2="335" stroke="#231D18" stroke-width="1.2"/>
+                    <line x1="86" y1="270" x2="86" y2="335" stroke="#231D18" stroke-width="1.2"/>
+                    <line x1="66" y1="296" x2="66" y2="335" stroke="#231D18" stroke-width="1"/>
+                    <!-- 底层大佛轮廓示意 -->
+                    <path d="M160 284 C151 284 148 295 148 305 L144 328 L160 328" stroke="#9E3328" stroke-width="0.9" fill="rgba(158,51,40,0.08)"/>
+                    <!-- 底层副阶屋檐（左剖+右立） -->
+                    <path d="M86 286 L50 298 L58 300 L86 293" stroke="#231D18" stroke-width="1" fill="#DFD5C0"/>
+                    <path d="M234 286 L270 298 L262 300 L234 293" stroke="#231D18" stroke-width="1" fill="#DFD5C0"/>
+                    <!-- 右半：立面柱列与门窗 -->
+                    <rect x="160" y="270" width="74" height="65" stroke="#231D18" stroke-width="0.9"/>
+                    <line x1="184" y1="270" x2="184" y2="335" stroke="#231D18" stroke-width="0.8"/>
+                    <line x1="210" y1="270" x2="210" y2="335" stroke="#231D18" stroke-width="0.8"/>
+                    <line x1="254" y1="296" x2="254" y2="335" stroke="#231D18" stroke-width="1"/>
+                    <rect x="166" y="302" width="14" height="33" stroke="#231D18" stroke-width="0.7"/>
+                    <!-- 一层上檐 -->
+                    <path d="M160 262 L58 274 L68 277 L160 270 Z" stroke="#231D18" stroke-width="1.1" fill="#D5C8B0"/>
+                    <path d="M160 262 L262 274 L252 277 L160 270 Z" stroke="#231D18" stroke-width="1.1" fill="#D5C8B0"/>
+
+                    <!-- 二层（含暗层斜撑剖面） -->
+                    <rect x="92" y="222" width="68" height="40" stroke="#231D18" stroke-width="0.9"/>
+                    <rect x="160" y="222" width="68" height="40" stroke="#231D18" stroke-width="0.9"/>
+                    <!-- 暗层结构层 (Pingzuo Mezzanine) 红色交叉斜撑示意 -->
+                    <line x1="92" y1="250" x2="160" y2="250" stroke="#231D18" stroke-width="0.8"/>
+                    <path d="M92 262 L116 250 M116 262 L92 250 M116 262 L142 250 M142 262 L116 250" stroke="#9E3328" stroke-width="0.9"/>
+                    <!-- 右侧立面斗拱与栏杆格扇 -->
+                    <line x1="160" y1="252" x2="232" y2="252" stroke="#231D18" stroke-width="0.9"/>
+                    <line x1="182" y1="222" x2="182" y2="252" stroke="#231D18" stroke-width="0.7"/>
+                    <line x1="205" y1="222" x2="205" y2="252" stroke="#231D18" stroke-width="0.7"/>
+                    <!-- 二层飞檐 -->
+                    <path d="M160 214 L66 226 L75 229 L160 222 Z" stroke="#231D18" stroke-width="1.1" fill="#D5C8B0"/>
+                    <path d="M160 214 L254 226 L245 229 L160 222 Z" stroke="#231D18" stroke-width="1.1" fill="#D5C8B0"/>
+
+                    <!-- 三层 -->
+                    <rect x="98" y="176" width="62" height="38" stroke="#231D18" stroke-width="0.9"/>
+                    <rect x="160" y="176" width="62" height="38" stroke="#231D18" stroke-width="0.9"/>
+                    <line x1="98" y1="203" x2="160" y2="203" stroke="#231D18" stroke-width="0.8"/>
+                    <path d="M98 214 L120 203 M120 214 L98 203 M120 214 L145 203 M145 214 L120 203" stroke="#9E3328" stroke-width="0.9"/>
+                    <line x1="180" y1="176" x2="180" y2="205" stroke="#231D18" stroke-width="0.7"/>
+                    <line x1="200" y1="176" x2="200" y2="205" stroke="#231D18" stroke-width="0.7"/>
+                    <path d="M160 168 L74 180 L82 183 L160 176 Z" stroke="#231D18" stroke-width="1.1" fill="#D5C8B0"/>
+                    <path d="M160 168 L246 180 L238 183 L160 176 Z" stroke="#231D18" stroke-width="1.1" fill="#D5C8B0"/>
+
+                    <!-- 四层 -->
+                    <rect x="104" y="132" width="56" height="36" stroke="#231D18" stroke-width="0.9"/>
+                    <rect x="160" y="132" width="56" height="36" stroke="#231D18" stroke-width="0.9"/>
+                    <line x1="104" y1="157" x2="160" y2="157" stroke="#231D18" stroke-width="0.8"/>
+                    <path d="M104 168 L125 157 M125 168 L104 157 M125 168 L146 157 M146 168 L125 157" stroke="#9E3328" stroke-width="0.9"/>
+                    <line x1="178" y1="132" x2="178" y2="159" stroke="#231D18" stroke-width="0.7"/>
+                    <line x1="196" y1="132" x2="196" y2="159" stroke="#231D18" stroke-width="0.7"/>
+                    <path d="M160 124 L82 135 L90 138 L160 132 Z" stroke="#231D18" stroke-width="1.1" fill="#D5C8B0"/>
+                    <path d="M160 124 L238 135 L230 138 L160 132 Z" stroke="#231D18" stroke-width="1.1" fill="#D5C8B0"/>
+
+                    <!-- 五层（顶层与八角攒尖顶） -->
+                    <rect x="110" y="92" width="50" height="32" stroke="#231D18" stroke-width="0.9"/>
+                    <rect x="160" y="92" width="50" height="32" stroke="#231D18" stroke-width="0.9"/>
+                    <line x1="110" y1="114" x2="160" y2="114" stroke="#231D18" stroke-width="0.8"/>
+                    <path d="M110 124 L130 114 M130 124 L110 114" stroke="#9E3328" stroke-width="0.9"/>
+                    <!-- 攒尖大屋顶与梁架剖面 -->
+                    <path d="M160 66 L78 95 L242 95 Z" stroke="#231D18" stroke-width="1.2" fill="#CFC0A4"/>
+                    <line x1="120" y1="82" x2="160" y2="82" stroke="#231D18" stroke-width="0.8"/>
+                    <line x1="135" y1="74" x2="160" y2="74" stroke="#231D18" stroke-width="0.8"/>
+                    <!-- 刹杆穿入屋顶内部立柱 -->
+                    <line x1="160" y1="20" x2="160" y2="95" stroke="#231D18" stroke-width="2"/>
+
+                    <!-- 顶部铁制塔刹 Finial & Iron Chains -->
+                    <ellipse cx="160" cy="64" rx="14" ry="4" stroke="#231D18" stroke-width="1" fill="#B5A48B"/>
+                    <ellipse cx="160" cy="54" rx="9" ry="3" stroke="#231D18" stroke-width="0.9" fill="#F3EDE2"/>
+                    <!-- 相轮 Rings -->
+                    <line x1="152" y1="47" x2="168" y2="47" stroke="#231D18" stroke-width="1.3"/>
+                    <line x1="153" y1="43" x2="167" y2="43" stroke="#231D18" stroke-width="1.3"/>
+                    <line x1="154" y1="39" x2="166" y2="39" stroke="#231D18" stroke-width="1.3"/>
+                    <line x1="155" y1="35" x2="165" y2="35" stroke="#231D18" stroke-width="1.3"/>
+                    <circle cx="160" cy="27" r="3.5" stroke="#9E3328" stroke-width="1" fill="#9E3328"/>
+                    <!-- 八角铁链斜拉线 -->
+                    <line x1="160" y1="31" x2="90" y2="92" stroke="#5A4E43" stroke-width="0.6" stroke-dasharray="2 1"/>
+                    <line x1="160" y1="31" x2="230" y2="92" stroke="#5A4E43" stroke-width="0.6" stroke-dasharray="2 1"/>
+
+                    <!-- 右侧层级文字标注 -->
+                    <g fill="#231D18" font-size="7" font-family="Noto Serif SC">
+                        <text x="268" y="88">五层 (明层)</text>
+                        <text x="268" y="132">四层 + 平座暗层</text>
+                        <text x="268" y="176">三层 + 平座暗层</text>
+                        <text x="268" y="222">二层 + 平座暗层</text>
+                        <text x="268" y="270">底层 + 副阶周匝</text>
+                    </g>
+
+                    <!-- 底部直径尺寸标注 -->
+                    <line x1="50" y1="366" x2="270" y2="366" stroke="#231D18" stroke-width="0.7"/>
+                    <line x1="50" y1="362" x2="50" y2="370" stroke="#231D18" stroke-width="0.7"/>
+                    <line x1="270" y1="362" x2="270" y2="370" stroke="#231D18" stroke-width="0.7"/>
+                    <text x="112" y="375" fill="#231D18" font-size="7.5" font-family="JetBrains Mono">BASE DIAMETER 底层直径 30.27m</text>
+                </svg>
+            </div>
+
+            <div class="border-t border-[#3A2E25]/20 pt-2 flex items-center justify-between text-[11px] text-[#5A4E43]">
+                <span>剖面红线：暗层豪猪刺斜撑结构</span>
+                <span class="font-mono-tech">八角双槽 · 24外柱 / 8内柱</span>
+            </div>
+        </div>
+
+        <!-- 右下角：构件与材质微距特写卡片 (Materials & Joinery Details) -->
+        <div class="arch-frame bg-[#F3EDE2]/90 backdrop-blur-md p-4 pointer-events-auto">
+            <div class="flex items-center justify-between border-b border-[#3A2E25]/25 pb-2 mb-2.5">
+                <div>
+                    <h2 class="text-xs font-bold tracking-widest text-[#231D18]">构件与榫卯微距图解 · JOINERY DETAILS</h2>
+                    <p class="font-en-serif text-[11px] text-[#5A4E43] italic">Click card to highlight corresponding 3D tier</p>
+                </div>
+                <span class="font-mono-tech text-[10px] px-1.5 py-0.5 border border-[#3A2E25]/30 text-[#3A2E25]">FIG. 2B</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <!-- 卡片 1：斗拱 -->
+                <div data-focus="dougong" class="detail-card arch-btn p-2 rounded-[2px] cursor-pointer flex flex-col items-center text-center group">
+                    <svg viewBox="0 0 80 65" class="w-14 h-12 mb-1" fill="none">
+                        <!-- 斗拱矢量线稿 -->
+                        <rect x="30" y="46" width="20" height="14" stroke="#231D18" stroke-width="1.2" fill="#D8CBB8"/>
+                        <path d="M16 36 L64 36 L58 46 L22 46 Z" stroke="#231D18" stroke-width="1.1" fill="#E8DEC8"/>
+                        <rect x="12" y="28" width="10" height="8" stroke="#9E3328" stroke-width="1" fill="#F3EDE2"/>
+                        <rect x="35" y="28" width="10" height="8" stroke="#9E3328" stroke-width="1" fill="#F3EDE2"/>
+                        <rect x="58" y="28" width="10" height="8" stroke="#9E3328" stroke-width="1" fill="#F3EDE2"/>
+                        <path d="M6 18 L74 18 L68 28 L12 28 Z" stroke="#231D18" stroke-width="1.1" fill="#D8CBB8"/>
+                        <line x1="40" y1="6" x2="40" y2="60" stroke="#9E3328" stroke-width="0.6" stroke-dasharray="2 2"/>
+                    </svg>
+                    <span class="text-[11px] font-bold text-[#231D18] group-hover:text-[#9E3328]">双槽七铺作斗拱</span>
+                    <span class="text-[9px] text-[#5A4E43] mt-0.5">全塔54种·480朵</span>
+                </div>
+
+                <!-- 卡片 2：暗层斜撑 -->
+                <div data-focus="mezzanine" class="detail-card arch-btn p-2 rounded-[2px] cursor-pointer flex flex-col items-center text-center group">
+                    <svg viewBox="0 0 80 65" class="w-14 h-12 mb-1" fill="none">
+                        <!-- 暗层斜撑桁架线稿 -->
+                        <rect x="10" y="10" width="8" height="45" stroke="#231D18" stroke-width="1.2" fill="#D8CBB8"/>
+                        <rect x="62" y="10" width="8" height="45" stroke="#231D18" stroke-width="1.2" fill="#D8CBB8"/>
+                        <rect x="8" y="12" width="64" height="6" stroke="#231D18" stroke-width="1" fill="#E8DEC8"/>
+                        <rect x="8" y="47" width="64" height="6" stroke="#231D18" stroke-width="1" fill="#E8DEC8"/>
+                        <line x1="18" y1="18" x2="62" y2="47" stroke="#9E3328" stroke-width="1.8"/>
+                        <line x1="62" y1="18" x2="18" y2="47" stroke="#9E3328" stroke-width="1.8"/>
+                        <circle cx="40" cy="32.5" r="3" fill="#9E3328"/>
+                    </svg>
+                    <span class="text-[11px] font-bold text-[#231D18] group-hover:text-[#9E3328]">平座暗层斜撑</span>
+                    <span class="text-[9px] text-[#5A4E43] mt-0.5">四暗层抗震刚性环</span>
+                </div>
+
+                <!-- 卡片 3：铁刹仰莲 -->
+                <div data-focus="spires" class="detail-card arch-btn p-2 rounded-[2px] cursor-pointer flex flex-col items-center text-center group">
+                    <svg viewBox="0 0 80 65" class="w-14 h-12 mb-1" fill="none">
+                        <!-- 铁刹线稿 -->
+                        <line x1="40" y1="5" x2="40" y2="58" stroke="#231D18" stroke-width="2"/>
+                        <circle cx="40" cy="11" r="4" stroke="#9E3328" stroke-width="1.2" fill="#D8CBB8"/>
+                        <ellipse cx="40" cy="22" rx="11" ry="2.5" stroke="#231D18" stroke-width="1"/>
+                        <ellipse cx="40" cy="28" rx="13" ry="2.5" stroke="#231D18" stroke-width="1"/>
+                        <ellipse cx="40" cy="34" rx="15" ry="2.5" stroke="#231D18" stroke-width="1"/>
+                        <path d="M22 46 Q40 56 58 46 L52 40 L28 40 Z" stroke="#231D18" stroke-width="1.1" fill="#D8CBB8"/>
+                        <line x1="40" y1="14" x2="12" y2="56" stroke="#9E3328" stroke-width="0.8" stroke-dasharray="2 2"/>
+                        <line x1="40" y1="14" x2="68" y2="56" stroke="#9E3328" stroke-width="0.8" stroke-dasharray="2 2"/>
+                    </svg>
+                    <span class="text-[11px] font-bold text-[#231D18] group-hover:text-[#9E3328]">铁制仰莲塔刹</span>
+                    <span class="text-[9px] text-[#5A4E43] mt-0.5">八条铁链引雷避震</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ==================== 底部元数据通栏 (Metadata Footer) ==================== -->
+    <footer class="fixed bottom-2 sm:bottom-3.5 left-2 sm:left-3.5 right-2 sm:right-3.5 z-30 bg-[#EAE1D0]/95 backdrop-blur-md border-t border-[#3A2E25]/35 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex flex-wrap items-center gap-x-6 gap-y-1">
+            <div class="flex items-center gap-2">
+                <span class="text-[#8C7D70] font-mono-tech text-[10px]">CHRONOLOGY</span>
+                <span class="font-bold text-[#231D18]">辽清宁二年 (1056年)</span>
+            </div>
+            <div class="h-3 w-[1px] bg-[#3A2E25]/25 hidden sm:block"></div>
+            <div class="flex items-center gap-2">
+                <span class="text-[#8C7D70] font-mono-tech text-[10px]">TYPOLOGY</span>
+                <span class="font-bold text-[#231D18]">纯木榫卯八角楼阁式 (明五暗四)</span>
+            </div>
+            <div class="h-3 w-[1px] bg-[#3A2E25]/25 hidden md:block"></div>
+            <div class="hidden md:flex items-center gap-2">
+                <span class="text-[#8C7D70] font-mono-tech text-[10px]">DIMENSIONS</span>
+                <span class="font-mono-tech font-semibold text-[#9E3328]">H: 67.31m / Ø: 30.27m</span>
+            </div>
+            <div class="h-3 w-[1px] bg-[#3A2E25]/25 hidden xl:block"></div>
+            <div class="hidden xl:flex items-center gap-2">
+                <span class="text-[#8C7D70] font-mono-tech text-[10px]">COMPONENTS</span>
+                <span class="font-semibold text-[#231D18]">约 30,000+ 木构件 · 54种斗拱形制 · 0 铁钉</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 ml-auto">
+            <span class="text-[11px] text-[#5A4E43] hidden sm:inline">左键拖拽：360°旋转俯仰 | 滚轮：平滑缩放 | 点击标注：聚焦解析</span>
+            <span class="font-mono-tech text-[10px] bg-[#231D18] text-[#F3EDE2] px-2 py-0.5 rounded-[1px]">LIANG SICHENG ARCHIVE STYLE</span>
+        </div>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

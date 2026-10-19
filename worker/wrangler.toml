@@ -1,0 +1,10 @@
+name = "yingxian-pagoda-api"
+main = "src/index.js"
+compatibility_date = "2026-01-01"
+
+# 部署后把 Pages 域名加入白名单（逗号分隔）；留空则允许任意来源读取公开数据
+[vars]
+ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173,https://yingxian-pagoda-b9v.pages.dev"
+
+[observability]
+enabled = true
